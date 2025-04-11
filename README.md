@@ -49,7 +49,7 @@ This is a Next.js project built with [create-next-app](https://nextjs.org/docs/a
   While data loads (or during a refresh), animated skeleton rows (using Tailwind’s `animate-pulse` class) are displayed to give users a smooth loading experience.
 
 - **Error Handling with Detailed Messages**  
-  If an API error occurs (for example, if CoinMarketCap returns a rate‑limit error), a nicely styled error card is displayed with the exact error message (e.g. "You've exceeded your API Key's HTTP request rate limit. Rate limits reset every minute.") along with a Retry button.
+  If an API error occurs (for example, if CoinMarketCap returns a rate‑limit error), an error card is displayed with the exact error message (e.g. "You've exceeded your API Key's HTTP request rate limit. Rate limits reset every minute.") along with a Retry button.
 
 - **Provider Switching**  
   The app supports a provider abstraction:
@@ -73,12 +73,12 @@ This is a Next.js project built with [create-next-app](https://nextjs.org/docs/a
 │   │   │         └─ route.ts    // Coin detail endpoint
 │   ├─ coin/
 │   │   └─ [id]/
-│   │         └─ page.tsx       // Detailed coin page (client component)
-│   └─ page.tsx                // Home/Listing page (client component)
+│   │         └─ page.tsx       // Detailed coin page
+│   └─ page.tsx                // Home/Listing page
 ├─ components/
 │   ├─ Navbar.tsx              // Search bar with suggestions + refresh button
 │   ├─ ProviderSelector.tsx    // Provider switching dropdown
-│   ├─ RecentCoins.tsx         // Recently viewed coins card (horizontal, wraps)
+│   ├─ RecentCoins.tsx         // Recently viewed coins card
 │   └─ ErrorCard.tsx           // Common error card component
 ├─ context/
 │   └─ CurrencyContext.tsx     // Global currency state management
