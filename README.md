@@ -166,6 +166,7 @@ const providerOptions: Option[] = [
 Key features:
 
 - **Search with debounced suggestions**
+- **Caching to show coins viewed once, very quickly the next time**
 - **Detailed coin views**
 - **Dynamic currency switching**
 - **Client‑side sorting on each column**
