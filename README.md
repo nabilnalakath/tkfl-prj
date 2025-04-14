@@ -10,54 +10,45 @@ This is a Next.js project built with [create-next-app](https://nextjs.org/docs/a
 
 - **Top 50 Cryptocurrency Listings**  
   The home page displays a table of the top 50 cryptocurrencies (by market cap) including:
-
   - **Coin name and symbol**
-  - **Current price** (by default in USD; currency can be switched)
+  - **Current price** – formatted to show values in the nearest Trillion, Billion, Million, or Thousand (e.g., 7,25B).
   - **Market Cap**
   - **24h Price Change Percentage**
 
 - **Coin Detail View**  
-  Clicking a coin navigates to a detailed page that shows:
-
-  - Extended coin information (price, market cap, 24h change, description, etc.)
-  - The coin is automatically added to the "recently viewed" list
+  Clicking on a coin navigates to a detailed page that shows:
+  - Extended coin information including the description, launched date, and other relevant links (e.g. Website, Reddit, GitHub, etc.).
+  - The coin is automatically added to a "recently viewed" list.
 
 - **Dynamic Currency Support**  
   A dropdown allows users to switch between supported fiat currencies (USD, EUR, CHF, GBP, INR), updating all coin prices on the fly.
 
-- **Search with Suggestions**  
-  A search bar with real‑time suggestions (using a debouncing mechanism) lets users quickly filter the coin list.
-
-  - Clicking a suggestion shows only that coin; otherwise, all matching coins are listed.
-
-- **Sorting for Each Column**  
-  Clickable table headers enable sorting by:
-
-  - **Coin Name** (click only on the "Coin" column—row numbers remain static)
-  - **Price**
-  - **Market Cap**
-  - **24h Change**  
-    The default sort is by **Price** (ascending by default), and clicking a header toggles the sort direction, displaying a small arrow (▲ for ascending, ▼ for descending).
-
-- **Recent Coins Section**  
-  A horizontally scrolling (wrapping if needed) "Recently Viewed Coins" card is displayed near the top of the page, allowing quick navigation to coins that were viewed recently.
-
-- **Refresh Button**  
-  A refresh button is built into the Navbar. When clicked, it clears the current cached data and revalidates the coin list—showing a skeleton loader while new data is fetched.
-
-- **Skeleton Loader Animation**  
-  While data loads (or during a refresh), animated skeleton rows (using Tailwind’s `animate-pulse` class) are displayed to give users a smooth loading experience.
-
-- **Error Handling with Detailed Messages**  
-  If an API error occurs (for example, if CoinMarketCap returns a rate‑limit error), an error card is displayed with the exact error message (e.g. "You've exceeded your API Key's HTTP request rate limit. Rate limits reset every minute.") along with a Retry button.
-
 - **Provider Switching**  
   The app supports a provider abstraction:
-
   - **CoinMarketCap (default)** – Fully implemented for live data.
-  - **CoinPaprika and CoinGecko** – Placeholder methods are in place; these can be enabled by implementing the proper API calls and adding API keys in your environment.
+  - **CoinPaprika and CoinGecko** – Placeholder methods are in place; these can be enabled by providing API keys and implementing the required API calls.
+  - The ProviderSelector component has been updated to use a common, consistently styled dropdown.
 
-  Use the Provider Selector dropdown (in `components/ProviderSelector.tsx`) to switch the active provider (currently, only CoinMarketCap is enabled).
+- **Advanced Sorting Options**  
+  - **Desktop Table:** Clickable table headers enable sorting by Coin Name, Price, Market Cap, and 24h Change. An arrow icon (▲/▼) indicates the sort direction.  
+  - **Mobile View:** On mobile, a card list view is used; sorting options are shown separately in a modern dropdown with a toggle button.
+
+- **Search with Debounced Suggestions**  
+  A search bar with real‑time suggestions (using a debouncing mechanism) lets users quickly filter the coin list.
+  - Clicking a suggestion shows only that coin; otherwise, all matching coins are listed.
+
+- **Recent Coins Section**  
+  A horizontally wrapping "Recently Viewed Coins" card near the top of the home page allows quick navigation back to coins that were viewed recently.
+
+- **Refresh Button**  
+  A refresh button is built into the Navbar. When clicked, it clears cached data and revalidates the coin list—showing an animated skeleton loader while new data is fetched.
+
+- **Error Handling with Detailed Messages**  
+  If an API error occurs (for example, exceeding CoinMarketCap’s rate limit), an error card is displayed with the exact error message and a Retry button.
+
+- **Minimalistic Styling & Modular Design**  
+  - The page has been broken into smaller, reusable components (e.g., Navbar, CoinTable, CoinCardList, CoinFilterControls, MobileSortControl) to improve maintainability.
+  - The UI is fully responsive. On mobile devices, a dedicated card list view replaces the table view, and sort controls appear separately from the table header.
 
 ---
 
@@ -76,10 +67,15 @@ This is a Next.js project built with [create-next-app](https://nextjs.org/docs/a
 │   │         └─ page.tsx       // Detailed coin page
 │   └─ page.tsx                // Home/Listing page
 ├─ components/
-│   ├─ Navbar.tsx              // Search bar with suggestions + refresh button
-│   ├─ ProviderSelector.tsx    // Provider switching dropdown
+│   ├─ Navbar.tsx              // Navbar with search, refresh, & suggestions
+│   ├─ ProviderSelector.tsx    // Provider switching using a common select component
 │   ├─ RecentCoins.tsx         // Recently viewed coins card
-│   └─ ErrorCard.tsx           // Common error card component
+│   ├─ ErrorCard.tsx           // Error card with clear retry messaging
+│   ├─ CommonSelect.tsx        // Reusable dropdown component
+│   ├─ CoinTable.tsx           // Desktop table view of coins 
+│   ├─ CoinCardList.tsx        // Mobile card view for coins
+│   ├─ MobileSortControl.tsx   // Mobile sorting controls
+│   └─ CoinFilterControls.tsx  // Currency and provider selectors
 ├─ context/
 │   └─ CurrencyContext.tsx     // Global currency state management
 ├─ lib/
@@ -110,7 +106,7 @@ This is a Next.js project built with [create-next-app](https://nextjs.org/docs/a
    yarn dev
    ```
 
-2. Open [http://localhost:3000](http://localhost:3000) with your browser to see the app in action.
+2. Open [http://localhost:3000](http://localhost:3000) in your browser to see the app in action.
 
 ---
 
@@ -121,35 +117,27 @@ Create an **.env.local** file in the project root with your API keys and base UR
 ```env
 # CoinMarketCap (Default Provider)
 COINMARKETCAP_BASE_URL=https://pro-api.coinmarketcap.com/v1
-COINMARKETCAP_API_KEY=OUR_COINMARKETCAP_API_KEY
+COINMARKETCAP_API_KEY=YOUR_COINMARKETCAP_API_KEY
 
-# COINGECKO API (or alternative providers; used as placeholders)
-COINGECKO_BASE_URL=https://api.freecryptoapi.com/v1
-COINGECKO_API_KEY=OUR_COINGECKO_CRYPTO_API_KEY
+# CoinGecko / CoinPaprika (Placeholders)
+COINGECKO_BASE_URL=https://api.coingecko.com/api/v3
+COINGECKO_API_KEY=YOUR_COINGECKO_API_KEY
 ```
 
-**Note:** Currently, only CoinMarketCap is active. API keys for CoinPaprika and CoinGecko were not implemented as I could not get valid keys. Their functionality can be enabled later by updating the API calls in `lib/providers/coinPaprika.ts` and `lib/providers/coinGecko.ts`.
+**Note:** Currently, only CoinMarketCap is active. API keys for CoinPaprika and CoinGecko are placeholders and can be enabled by providing the proper keys and API implementations.
 
 ---
 
 ## Switching API Providers
 
-The app uses a provider transformer (in `lib/providers/transformer.ts`) to choose the API based on the selected provider. In the UI, the **ProviderSelector** component (in `components/ProviderSelector.tsx`) shows a dropdown. Only CoinMarketCap is enabled by default; the other options are currently disabled. Once you have valid API keys and implementations for the other providers, simply remove the `disabled` attribute in that component.
+The app uses a provider transformer (in `lib/providers/transformer.ts`) to choose the API based on the selected provider. In the UI, the **ProviderSelector** component (in `components/ProviderSelector.tsx`) has a list of provided. Only CoinMarketCap is enabled by default; the other options are currently disabled. Once you have valid API keys and implementations for the other providers, simply remove the `disabled` attribute in for that provider.
 
 ```tsx
-<select
-  value={provider}
-  onChange={handleChange}
-  className="px-2 py-1 border rounded"
->
-  <option value="coinmarketcap">CoinMarketCap</option>
-  <option value="coinpaprika" disabled>
-    CoinPaprika
-  </option>
-  <option value="coingecko" disabled>
-    CoinGecko
-  </option>
-</select>
+const providerOptions: Option[] = [
+  { value: "coinmarketcap", label: "CoinMarketCap" },
+  { value: "coinpaprika", label: "CoinPaprika", disabled: true },
+  { value: "coingecko", label: "CoinGecko", disabled: true },
+];
 ```
 
 ---
