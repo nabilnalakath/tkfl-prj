@@ -1,4 +1,3 @@
-// lib/providers/coinMarketCap.ts
 import { CoinDetailData, StandardCoinData } from "@/types/coins";
 
 const BASE_URL =
@@ -32,9 +31,7 @@ async function handleError(response: Response): Promise<never> {
   console.error(
     `Failed to fetch from CoinMarketCap. Status: ${response.status}. Response: ${bodyText}`,
   );
-  throw new Error(
-    `Failed to fetch from CoinMarketCap. Status: ${response.status}. Response: ${bodyText}`,
-  );
+  throw new Error(`Failed to fetch info from CoinMarketCap.`);
 }
 
 export async function fetchCoinMarketCapCoins(
@@ -130,7 +127,9 @@ export async function fetchCoinMarketCapCoinDetail(
       name: coinInfo.name,
       symbol: coinInfo.symbol,
       image: coinInfo.logo,
-      description: coinInfo.description?.en || "",
+      description: coinInfo.description || "",
+      dateLaunched: coinInfo.date_launched,
+      urls: coinInfo.urls || [],
       currentPrice: coinQuotes.price,
       marketCap: coinQuotes.market_cap,
       priceChangePercentage24h: coinQuotes.percent_change_24h,

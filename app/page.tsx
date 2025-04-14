@@ -3,11 +3,17 @@
 import { useState, useMemo, useEffect } from "react";
 import useSWR from "swr";
 import Navbar from "@/components/Navbar";
-import ProviderSelector from "@/components/ProviderSelector";
-import { useCurrency } from "@/context/CurrencyContext";
-import Link from "next/link";
 import RecentCoins from "@/components/RecentCoins";
 import ErrorCard from "@/components/ErrorCard";
+import { useRouter } from "next/navigation";
+import CoinTable from "@/components/CoinTable";
+import CoinCardList from "@/components/CoinCardList";
+import MobileSortControl from "@/components/MobileSortControl";
+import CoinFilterControls, {
+  currencyOptions,
+} from "@/components/CoinFilterControls";
+import { useCurrency } from "@/context/CurrencyContext";
+import { Option } from "@/components/CommonSelect";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -34,8 +40,20 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCoinId, setSelectedCoinId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [localCoins, setLocalCoins] = useState<any[] | undefined>(undefined);
+  const [localCoins, setLocalCoins] = useState<any[] | undefined>();
+  const [selectedCurrency, setSelectedCurrency] = useState<Option>(
+    currencyOptions[0],
+  );
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "marketCap",
+    direction: "desc",
+  });
+  const [mobileSortValue, setMobileSortValue] = useState<Option>({
+    value: "marketCap",
+    label: "Market Cap",
+  });
 
+  const router = useRouter();
   const apiUrl = `/api/coins?vs_currency=${currency}&provider=${provider}`;
   const { data, error, mutate } = useSWR(apiUrl, fetcher);
 
@@ -43,19 +61,18 @@ export default function Home() {
     setLocalCoins(data?.coins);
   }, [data]);
 
-  // Handle search input.
+  // Memoize suggestions
+  const memoizedSuggestions = useMemo(() => localCoins, [localCoins]);
+
   function handleSearch(query: string) {
     setSearchQuery(query);
     setSelectedCoinId(null);
   }
 
-  // Handle suggestion click.
   function handleSuggestionSelect(coin: any) {
     setSearchQuery(coin.name);
     setSelectedCoinId(coin.id);
   }
-
-  const memoizedSuggestions = useMemo(() => localCoins, [localCoins]);
 
   let displayedCoins = localCoins;
   if (displayedCoins) {
@@ -72,23 +89,6 @@ export default function Home() {
     }
   }
 
-  // Default sort configuration: by marketCap in descending order.
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: "marketCap",
-    direction: "desc",
-  });
-
-  // Sorting handler: toggles sort direction or sets a new sort key.
-  const handleSort = (key: string) => {
-    setSortConfig((prev) => {
-      if (prev && prev.key === key) {
-        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
-      }
-      return { key, direction: "asc" };
-    });
-  };
-
-  // Memoize the sorted coins.
   const sortedCoins = useMemo(() => {
     if (!displayedCoins) return [];
     if (!sortConfig) return displayedCoins;
@@ -122,7 +122,38 @@ export default function Home() {
     return sorted;
   }, [displayedCoins, sortConfig]);
 
-  // Refresh callback: clear the local coins then revalidate.
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev && prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const handleMobileSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newKey = e.target.value;
+    setSortConfig((prev) => ({
+      key: newKey,
+      direction: prev?.direction || "asc",
+    }));
+    setMobileSortValue({
+      value: newKey,
+      label: e.target.options[e.target.selectedIndex].text,
+    });
+  };
+
+  const toggleMobileSortDirection = () => {
+    setSortConfig((prev) =>
+      prev
+        ? {
+            key: prev.key,
+            direction: prev.direction === "asc" ? "desc" : "asc",
+          }
+        : { key: "marketCap", direction: "asc" },
+    );
+  };
+
   const onRefresh = async () => {
     setIsRefreshing(true);
     setLocalCoins(undefined); // clear coins so skeleton shows
@@ -134,7 +165,7 @@ export default function Home() {
   // Error handling: display ErrorCard with error message.
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col overflow-x-hidden">
         <Navbar
           onSearch={handleSearch}
           onSuggestionSelect={handleSuggestionSelect}
@@ -157,7 +188,7 @@ export default function Home() {
   // While data is not loaded or during refresh, force skeleton loader.
   if (!data || isRefreshing || localCoins === undefined) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col overflow-x-hidden">
         <Navbar
           onSearch={handleSearch}
           onSuggestionSelect={handleSuggestionSelect}
@@ -165,45 +196,20 @@ export default function Home() {
           onRefresh={onRefresh}
         />
         <RecentCoins />
-        <div
-          className="p-4 relative"
-          style={{ maxHeight: "600px", overflowY: "auto" }}
-        >
-          <table className="w-full border-collapse">
-            <thead className="sticky top-0 bg-white z-50">
-              <tr>
-                <th className="px-4 py-2 text-left w-16">#</th>
-                <th className="px-4 py-2 text-left">Coin</th>
-                <th className="px-4 py-2 text-right">Price ({currency})</th>
-                <th className="px-4 py-2 text-right">Market Cap</th>
-                <th className="px-4 py-2 text-right">24h Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(5)].map((_, index) => (
-                <tr key={index} className="animate-pulse border-b">
-                  <td className="px-4 py-2 text-left w-16">
-                    <div className="bg-gray-200 rounded h-4 w-6" />
-                  </td>
-                  <td className="px-4 py-2 text-left">
-                    <div className="flex items-center">
-                      <div className="w-5 h-5 bg-gray-200 rounded-full mr-2" />
-                      <div className="bg-gray-200 rounded h-4 w-24" />
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="bg-gray-200 rounded h-4 w-20" />
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="bg-gray-200 rounded h-4 w-24" />
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="bg-gray-200 rounded h-4 w-16" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-4 overflow-x-auto animate-pulse text-sm">
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between bg-gray-100 rounded-lg p-4"
+              >
+                <div className="w-1/5 h-4 bg-gray-300 rounded"></div>
+                <div className="w-1/5 h-4 bg-gray-300 rounded"></div>
+                <div className="w-1/5 h-4 bg-gray-300 rounded"></div>
+                <div className="w-1/5 h-4 bg-gray-300 rounded"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -212,7 +218,7 @@ export default function Home() {
   // If data is loaded but filtering results in no coins.
   if (displayedCoins && displayedCoins.length === 0) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen overflow-x-hidden">
         <Navbar
           onSearch={handleSearch}
           onSuggestionSelect={handleSuggestionSelect}
@@ -226,7 +232,7 @@ export default function Home() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
       <Navbar
         onSearch={handleSearch}
         onSuggestionSelect={handleSuggestionSelect}
@@ -234,99 +240,44 @@ export default function Home() {
         onRefresh={onRefresh}
       />
       <RecentCoins />
-      <div className="p-4 flex items-center gap-4">
-        <div>
-          <label className="mr-2">Select Currency:</label>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="px-2 py-1 border rounded"
-          >
-            {["USD", "EUR", "CHF", "GBP", "INR"].map((cur) => (
-              <option key={cur} value={cur}>
-                {cur}
-              </option>
-            ))}
-          </select>
+      {/* Unified container with consistent padding */}
+      <div className="p-4">
+        <CoinFilterControls
+          selectedCurrency={selectedCurrency}
+          onCurrencyChange={(option) => {
+            setSelectedCurrency(option);
+            setCurrency(option.value);
+          }}
+          onProviderChange={(prov) => setProvider(prov)}
+        />
+        <MobileSortControl
+          sortConfig={sortConfig}
+          onSortKeyChange={handleSort}
+          onSortDirectionToggle={toggleMobileSortDirection}
+        />
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <CoinTable
+            coins={sortedCoins}
+            currency={currency}
+            onRowClick={(coin) =>
+              router.push(`/coin/${coin.id}?provider=${provider}`)
+            }
+            sortConfig={sortConfig}
+            handleSort={handleSort}
+            provider={provider}
+          />
         </div>
-        <ProviderSelector onProviderChange={(prov) => setProvider(prov)} />
-      </div>
-      <div
-        className="p-4 relative"
-        style={{ maxHeight: "600px", overflowY: "auto" }}
-      >
-        <table className="w-full border-collapse">
-          <thead className="sticky top-0 bg-white z-50">
-            <tr>
-              <th className="px-4 py-2 text-left w-16">#</th>
-              <th
-                className="px-4 py-2 text-left cursor-pointer select-none"
-                onClick={() => handleSort("name")}
-              >
-                Coin&nbsp;
-                {sortConfig?.key === "name" &&
-                  (sortConfig.direction === "asc" ? "▲" : "▼")}
-              </th>
-              <th
-                className="px-4 py-2 text-right cursor-pointer select-none"
-                onClick={() => handleSort("currentPrice")}
-              >
-                Price ({currency})&nbsp;
-                {sortConfig?.key === "currentPrice" &&
-                  (sortConfig.direction === "asc" ? "▲" : "▼")}
-              </th>
-              <th
-                className="px-4 py-2 text-right cursor-pointer select-none"
-                onClick={() => handleSort("marketCap")}
-              >
-                Market Cap&nbsp;
-                {sortConfig?.key === "marketCap" &&
-                  (sortConfig.direction === "asc" ? "▲" : "▼")}
-              </th>
-              <th
-                className="px-4 py-2 text-right cursor-pointer select-none"
-                onClick={() => handleSort("priceChangePercentage24h")}
-              >
-                24h Change&nbsp;
-                {sortConfig?.key === "priceChangePercentage24h" &&
-                  (sortConfig.direction === "asc" ? "▲" : "▼")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedCoins.map((coin: any, index: number) => (
-              <tr key={coin.id} className="border-b">
-                <td className="px-4 py-2 text-left w-16">{index + 1}</td>
-                <td className="px-4 py-2 text-left">
-                  {coin.image && (
-                    <img
-                      src={coin.image}
-                      alt={coin.name}
-                      className="inline w-5 h-5 mr-2 align-middle"
-                    />
-                  )}
-                  <Link
-                    href={`/coin/${coin.id}?provider=${provider}`}
-                    className="text-blue-500 hover:underline align-middle"
-                  >
-                    {coin.name} ({coin.symbol.toUpperCase()})
-                  </Link>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {coin.currentPrice.toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {coin.marketCap.toLocaleString()}
-                </td>
-                <td
-                  className={`px-4 py-2 text-right ${coin.priceChangePercentage24h >= 0 ? "text-green-500" : "text-red-500"}`}
-                >
-                  {coin.priceChangePercentage24h?.toFixed(2)}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+          <CoinCardList
+            coins={sortedCoins}
+            currency={currency}
+            onCardClick={(coin) =>
+              router.push(`/coin/${coin.id}?provider=${provider}`)
+            }
+          />
+        </div>
       </div>
     </div>
   );
