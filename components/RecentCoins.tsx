@@ -22,21 +22,25 @@ export default function RecentCoins() {
   if (recent.length === 0) return null;
 
   return (
-    <div className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg shadow my-4">
-      <h2 className="text-lg font-semibold text-blue-800 mb-2">
-        Recently Viewed Coins
-      </h2>
-      <div className="flex gap-2 flex-wrap">
-        {recent.map((coin) => (
-          <Link
-            key={coin.id}
-            href={`/coin/${coin.id}`}
-            className="inline-block px-4 py-2 bg-white border border-blue-100 rounded-full text-blue-600 font-medium hover:bg-blue-100 transition"
-          >
-            {coin.name}{" "}
-            <span className="text-sm">({coin.symbol.toUpperCase()})</span>
-          </Link>
-        ))}
+    <div className="w-full px-4 sm:px-6 lg:px-12">
+      <div className="max-w-7xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm my-6 px-4 py-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3 tracking-wide uppercase">
+          Recently Viewed Coins
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {recent.map((coin) => (
+            <Link
+              key={coin.id}
+              href={`/coin/${coin.id}`}
+              className="px-3 py-1.5 rounded-full text-sm bg-gray-50 border border-gray-200 text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition whitespace-nowrap"
+            >
+              {coin.name}{" "}
+              <span className="text-xs text-gray-500">
+                ({coin.symbol.toUpperCase()})
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

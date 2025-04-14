@@ -1,8 +1,8 @@
-// components/Navbar.tsx
 "use client";
 
 import Link from "next/link";
 import { useState, useMemo, useRef, useCallback } from "react";
+import { XMarkIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 
 interface CoinSuggestion {
   id: string;
@@ -11,10 +11,11 @@ interface CoinSuggestion {
 }
 
 interface NavbarProps {
-  onSearch: (query: string) => void;
+  onSearch?: (query: string) => void;
   onSuggestionSelect?: (coin: CoinSuggestion) => void;
   suggestions?: CoinSuggestion[];
   onRefresh?: () => void;
+  minimal?: boolean;
 }
 
 /**
@@ -22,34 +23,31 @@ interface NavbarProps {
  */
 function useDebounce(callback: (value: string) => void, delay: number) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedFunction = useCallback(
+  return useCallback(
     (value: string) => {
-      if (timer.current !== null) {
-        clearTimeout(timer.current);
-      }
-      timer.current = setTimeout(() => {
-        callback(value);
-      }, delay);
+      if (timer.current !== null) clearTimeout(timer.current);
+      timer.current = setTimeout(() => callback(value), delay);
     },
     [callback, delay],
   );
-  return debouncedFunction;
 }
 
 export default function Navbar({
-  onSearch,
+  onSearch = () => {},
   onSuggestionSelect,
   suggestions = [],
   onRefresh,
+  minimal = false,
 }: NavbarProps) {
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchedLabel, setSearchedLabel] = useState<string | null>(null);
 
-  // Debounce the update of query state by 300ms
-  const debouncedSetQuery = useDebounce((value: string) => {
-    setQuery(value);
-  }, 300);
+  const debouncedSetQuery = useDebounce(
+    (value: string) => setQuery(value),
+    300,
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -58,26 +56,27 @@ export default function Navbar({
     setShowSuggestions(true);
   };
 
-  // Compute filtered suggestions using useMemo
   const filteredSuggestions = useMemo(() => {
-    if (query.length > 0) {
-      return suggestions.filter(
-        (coin) =>
-          coin.name.toLowerCase().includes(query.toLowerCase()) ||
-          coin.symbol.toLowerCase().includes(query.toLowerCase()),
-      );
-    }
-    return [];
+    if (!query) return [];
+    return suggestions.filter(
+      (coin) =>
+        coin.name.toLowerCase().includes(query.toLowerCase()) ||
+        coin.symbol.toLowerCase().includes(query.toLowerCase()),
+    );
   }, [query, suggestions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(query.trim());
+    const trimmed = query.trim();
+    onSearch(trimmed);
+    setSearchedLabel(trimmed);
     setShowSuggestions(false);
   };
 
   const handleSuggestionClick = (suggestion: CoinSuggestion) => {
     setInputValue(suggestion.name);
+    setQuery(suggestion.name);
+    setSearchedLabel(suggestion.name);
     if (onSuggestionSelect) {
       onSuggestionSelect(suggestion);
     } else {
@@ -86,49 +85,96 @@ export default function Navbar({
     setShowSuggestions(false);
   };
 
+  const handleClearSearch = () => {
+    setInputValue("");
+    setQuery("");
+    setSearchedLabel(null);
+    setShowSuggestions(false);
+    onSearch("");
+  };
+
   return (
-    <nav className="relative flex items-center justify-between p-4 bg-gray-50 shadow">
-      <Link href="/" className="text-2xl font-bold text-orange-500">
-        Crypto Search
-      </Link>
-      {onRefresh && (
-        <button
-          onClick={onRefresh}
-          className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        >
-          Refresh Data
-        </button>
-      )}
-      <div className="flex items-center space-x-4">
-        <div className="relative">
-          <form onSubmit={handleSubmit} className="flex items-center">
-            <input
-              type="text"
-              placeholder="Search coin..."
-              value={inputValue}
-              onChange={handleInputChange}
-              className="px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-l-md"
-              style={{ minWidth: "200px" }}
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-orange-500 text-white rounded-r-md hover:bg-orange-600 transition-colors focus:ring-2 focus:ring-orange-500 focus:outline-none"
-            >
-              Search
-            </button>
-          </form>
-          {showSuggestions && filteredSuggestions.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded mt-2 max-h-60 overflow-y-auto shadow-lg">
-              {filteredSuggestions.slice(0, 10).map((suggestion) => (
-                <li
-                  key={suggestion.id}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => handleSuggestionClick(suggestion)}
+    <nav className="sticky top-0 z-50 w-full bg-white border-b shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 py-3 min-h-[64px] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* Logo */}
+        <div className="text-lg font-semibold text-gray-800 hover:text-orange-500 transition-colors">
+          <Link href="/">Crypto Search</Link>
+        </div>
+
+        {/* Right Section: Search + Refresh */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+          {!minimal && (
+            <>
+              <div className="relative w-full sm:w-80">
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex rounded-md overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-orange-500"
                 >
-                  {suggestion.name} ({suggestion.symbol.toUpperCase()})
-                </li>
-              ))}
-            </ul>
+                  <div className="relative flex-1">
+                    {searchedLabel && !showSuggestions && (
+                      <div className="absolute left-2 top-1/2 -translate-y-1/2 bg-gray-100 border border-gray-300 rounded-full px-3 py-1 text-sm flex items-center gap-2 z-10">
+                        {searchedLabel}
+                        <button
+                          onClick={handleClearSearch}
+                          type="button"
+                          className="text-red-500 hover:text-red-600 cursor-pointer"
+                        >
+                          <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Search coin..."
+                      value={
+                        searchedLabel && !showSuggestions ? "" : inputValue
+                      }
+                      onChange={handleInputChange}
+                      disabled={!!(searchedLabel && !showSuggestions)}
+                      className={`w-full px-3 py-2 focus:outline-none bg-white disabled:bg-gray-100 ${
+                        searchedLabel && !showSuggestions
+                          ? "pl-28 text-gray-600 cursor-not-allowed"
+                          : ""
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="cursor-pointer px-4 py-2 bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                  >
+                    Search
+                  </button>
+                </form>
+
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <ul className="absolute left-0 top-full w-full bg-white border border-gray-300 rounded-md shadow max-h-60 overflow-y-auto text-sm z-40 mt-1">
+                    {filteredSuggestions.slice(0, 10).map((suggestion) => (
+                      <li
+                        key={suggestion.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                      >
+                        {suggestion.name} ({suggestion.symbol.toUpperCase()})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="cursor-pointer hidden sm:block px-4 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="h-4 w-4">
+                      <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    Refresh
+                  </span>
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

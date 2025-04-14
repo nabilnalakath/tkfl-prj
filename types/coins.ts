@@ -9,4 +9,6 @@ export interface StandardCoinData {
 }
 export interface CoinDetailData extends StandardCoinData {
   description: string;
+  dateLaunched?: string;
+  urls?: [];
 }
